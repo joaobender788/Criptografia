@@ -4,6 +4,7 @@ import time
 from flask import Flask, request, jsonify
 import requests
 import rsa
+import os
 
 app = Flask(__name__)
 
@@ -12,16 +13,20 @@ app = Flask(__name__)
 print("=== CONFIGURAÇÃO DO CHAT ===")
 print("1. Iniciar como Aplicação A (Porta 5000 -> Envia para 5001)")
 print("2. Iniciar como Aplicação B (Porta 5001 -> Envia para 5000)")
-escolha = input("Escolha a opção (1 ou 2): ").strip()
+print("3. Sair")
+escolha = input("Escolha a opção (1, 2 ou 3): ").strip()
 
 if escolha == "1":
     MINHA_PORTA = 5000
     PORTA_ALVO = 5001
     NOME = "Aplicação A"
-else:
+elif escolha == "2":
     MINHA_PORTA = 5001
     PORTA_ALVO = 5000
     NOME = "Aplicação B"
+else:
+    print("Encerrando o programa...")
+    os._exit(0)
 
 URL_ALVO = f"http://localhost:{PORTA_ALVO}"
 
@@ -54,15 +59,19 @@ def webhook_msg():
     dados = request.json
     # 1. Recebe a mensagem em Base64 (texto seguro para tráfego HTTP)
     msg_criptografada_b64 = dados['mensagem'].encode('utf-8')
+    
+    # Demonstração visual do RSA na interface (exibe o conteúdo cifrado que trafegou na rede)
+    print(f"\n🔒 [Rede] Chegou pacote criptografado pelo Webhook: {dados['mensagem']}")
+    
     # 2. Decodifica o Base64 para voltar a ser os bytes criptografados originais
     msg_criptografada_bytes = base64.b64decode(msg_criptografada_b64)
     
     # 3. Descriptografa usando a MINHA chave privada
     try:
         msg_descriptografada = rsa.decrypt(msg_criptografada_bytes, minha_chave_privada).decode('utf-8')
-        print(f"\n📩 Parceiro: {msg_descriptografada}")
+        print(f"Parceiro: {msg_descriptografada}")
     except rsa.DecryptionError:
-        print("\n❌ [Erro] Falha ao descriptografar a mensagem. As chaves não batem.")
+        print("\n[Erro] Falha ao descriptografar a mensagem. As chaves não batem.")
         
     print("Você: ", end="", flush=True)
     return jsonify({"status": "Mensagem recebida"}), 200
@@ -104,7 +113,8 @@ def interface_usuario():
     time.sleep(1.5) # Aguarda o Flask inicializar na tela
     print("\n" + "="*40)
     print(" COMANDOS DO CHAT:")
-    print(" Digite '1' -> Para ENVIAR sua chave pública (Negociar)")
+    print(" Digite '1'    -> Para ENVIAR sua chave pública (Negociar)")
+    print(" Digite 'sair' -> Para fechar o chat e encerrar o programa")
     print(" Digite qualquer outra coisa -> Envia como mensagem")
     print("="*40 + "\n")
     
@@ -114,6 +124,9 @@ def interface_usuario():
             continue
         if opcao == "1":
             enviar_minha_chave()
+        elif opcao.lower() == "sair":
+            print("Encerrando o chat e fechando o aplicativo...")
+            os._exit(0) # Finaliza por completo o processo e todas as threads ativas
         else:
             enviar_mensagem(opcao)
 
